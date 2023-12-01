@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="ActressMas">
+      <HintPath>..\..\..\..\Downloads\ActressMas-master\ActressMas-master\ActressMAS v3.0\ActressMas Dll\ActressMas.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
