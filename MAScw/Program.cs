@@ -7,27 +7,27 @@ namespace EdgeComputingAuction
     {
         static void Main(string[] args)
         {
-            var environment = new EnvironmentMas();
+            var environment = new EnvironmentMas(randomOrder: false, parallel: false);
 
             // Initialize the auctioneer agent
             var auctioneer = new AuctioneerAgent();
             environment.Add(auctioneer, "Auctioneer");
 
             // Initialize bidder agents (device agents)
-            for (int i = 1; i <= 10; i++) // Assuming 5 bidder agents
+            for (int i = 1; i <= 15; i++)
             {
                 int dataRequirement = new Random().Next(10, 50); // Random data requirement between 10 and 50 Mb
-                int valuation = new Random().Next(100, 500); // Random valuation between 100 and 500
+                int valuation = new Random().Next(100, 1000);
 
                 var bidderAgent = new BidderAgent(dataRequirement, valuation);
                 environment.Add(bidderAgent, $"Bidder{i}");
             }
 
             // Initialize edge server agents (seller agents)
-            for (int i = 1; i <= 10; i++) // Assuming 3 edge server agents
+            for (int i = 1; i <= 10; i++)
             {
                 int capacity = new Random().Next(20, 100); // Random capacity between 20 and 100 Mb
-                int costPerUnit = new Random().Next(5, 25); // Random cost per unit between 5 and 25
+                int costPerUnit = new Random().Next(50, 250); // Random cost per mb between 5 and 25
 
                 var edgeServerAgent = new EdgeServerAgent(capacity, costPerUnit);
                 environment.Add(edgeServerAgent, $"EdgeServer{i}");

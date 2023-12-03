@@ -13,23 +13,32 @@ namespace EdgeComputingAuction
         private List<string> _participants;
         private int expectedNumberOfParticipants = 15;
 
+
+        private bool _offersCollected;
+        private bool _bidsCollected;
+        private int expectedNumberOfOffers;
+        private int expectedNumberOfBids;
+
         public AuctioneerAgent()
         {
             _participants = new List<string>();
             _bids = new List<Bid>();
             _offers = new List<Offer>();
             _round = 0;
+
+            expectedNumberOfOffers = 10; 
+            expectedNumberOfBids = 15;   
         }
 
         public override void Setup()
         {
             Broadcast("start");
-            Console.WriteLine("Auction Started");
+            Console.WriteLine("---------------------------Auction Started---------------------------");
         }
 
         public override void Act(Message message)
         {
-            Console.WriteLine($"Auctioneer received message: {message.Content}");
+            Console.WriteLine($"{message.Content} ----> Auctioneer");
 
             if (message.Content.StartsWith("join"))
             {
@@ -49,10 +58,20 @@ namespace EdgeComputingAuction
             {
                 HandleOffer(message.Sender, message.Content);
             }
-
-            if (_round > 0 && _bids.Count > 0 && _offers.Count > 0)
+            if (!_offersCollected && _offers.Count >= expectedNumberOfOffers) 
+            {
+                _offersCollected = true;
+            }
+            // Check if all bids have been received
+            if (!_bidsCollected && _bids.Count >= expectedNumberOfBids)
+            {
+                _bidsCollected = true;
+            }
+            if (_round > 0 && _offersCollected && (_bidsCollected || _bids.Count > 0))
             {
                 PerformAuction();
+                _offersCollected = false; // Reset for next round
+                _bidsCollected = false; // Reset for next round
             }
         }
 
@@ -64,7 +83,7 @@ namespace EdgeComputingAuction
                 if (_participants.Count == expectedNumberOfParticipants)
                 {
                     Broadcast("start auction");
-                    Console.WriteLine("Auction Started");
+                    Console.WriteLine("---------------Auction Started--------------------");
                 }
             }
         }
@@ -94,7 +113,7 @@ namespace EdgeComputingAuction
                 Amount = offerAmount
             });
 
-            Console.WriteLine($"Received offer from {seller} for {offerAmount}.");
+            Console.WriteLine($"Received offer from {seller} for {offerAmount} pence per MB");
         }
 
         private void PerformAuction()
@@ -102,49 +121,37 @@ namespace EdgeComputingAuction
             var sortedBids = _bids.OrderByDescending(b => b.Amount).ToList();
             var sortedOffers = _offers.OrderBy(o => o.Amount).ToList();
 
-            bool matchFound = true;
-
-            while (matchFound && sortedBids.Any() && sortedOffers.Any())
+            for (int bidIndex = 0; bidIndex < sortedBids.Count; bidIndex++)
             {
-                matchFound = false; // Reset match flag for this iteration
+                var currentBid = sortedBids[bidIndex];
 
-                for (int bidIndex = 0; bidIndex < sortedBids.Count; bidIndex++)
+                for (int offerIndex = 0; offerIndex < sortedOffers.Count; offerIndex++)
                 {
-                    var currentBid = sortedBids[bidIndex];
+                    var currentOffer = sortedOffers[offerIndex];
 
-                    for (int offerIndex = 0; offerIndex < sortedOffers.Count; offerIndex++)
+                    if (currentBid.Amount >= currentOffer.Amount)
                     {
-                        var currentOffer = sortedOffers[offerIndex];
+                        // Match found
+                        Console.WriteLine($"Auction Match:{currentBid.Bidder} wins with bid {currentBid.Amount}. Seller: {currentOffer.Seller} with offer {currentOffer.Amount}");
+                        Send(currentBid.Bidder, $"win {currentBid.Amount}");
+                        Send(currentOffer.Seller, $"sold {currentOffer.Amount} pence");
 
-                        if (currentBid.Amount >= currentOffer.Amount)
-                        {
-                            // Match found
-                            Console.WriteLine($"Auction Match: Bidder {currentBid.Bidder} wins with bid {currentBid.Amount}. Seller: {currentOffer.Seller} with offer {currentOffer.Amount}");
-                            Send(currentBid.Bidder, $"win {currentBid.Amount}");
-                            Send(currentOffer.Seller, $"sold {currentOffer.Amount} pence");
+                        // Remove matched bid and offer
+                        sortedBids.RemoveAt(bidIndex);
+                        sortedOffers.RemoveAt(offerIndex);
 
-                            // Remove matched bid and offer
-                            sortedBids.RemoveAt(bidIndex);
-                            sortedOffers.RemoveAt(offerIndex);
+                        // Adjust bidIndex to account for the removed bid
+                        bidIndex--;
 
-                            // Adjust indices to account for removed items
-                            bidIndex--;
-                            offerIndex--;
-
-                            matchFound = true;
-                            break; // Break out of the inner loop to process the next bid
-                        }
+                        break; // Break out of the inner loop and continue with the next bid
                     }
                 }
             }
-
-            // Clear bids and offers after attempting all possible matches
-            _bids.Clear();
             _offers.Clear();
+            _bids.Clear();
             _round++;
             Console.WriteLine("Next auction round will start.----------------------------------------------------------");
         }
-
 
         private struct Bid
         {

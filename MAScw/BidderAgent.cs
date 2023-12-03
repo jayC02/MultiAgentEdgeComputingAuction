@@ -18,8 +18,8 @@ namespace EdgeComputingAuction
 
         public override void Setup()
         {
-            Console.WriteLine($"{Name} set up with data requirement {DataRequirement} Mb and valuation {Valuation}.");
-            Send("Auctioneer", $"join {DataRequirement}");
+            Console.WriteLine($"{Name} set up with data requirement {DataRequirement} Mb and valuation {Valuation}p");
+            Send("Auctioneer", $"{Name} join {DataRequirement}MB");
         }
 
         public override void Act(Message message)
@@ -42,15 +42,37 @@ namespace EdgeComputingAuction
             if (!_hasWonBid)
             {
                 int bidAmount = CalculateBid();
-                Console.WriteLine($"{Name} is bidding {bidAmount}");
+                Console.WriteLine($"{Name} is bidding {bidAmount} pence");
                 Send("Auctioneer", $"bid {bidAmount}");
             }
         }
 
         private int CalculateBid()
         {
-            // Implement your bidding strategy here. This is a simple example.
-            return Valuation - (new Random()).Next(0, Valuation / 10);
+  
+            int averageBidEstimate = GetAverageBidEstimate();
+
+            double bidModifier = CalculateBidModifier(averageBidEstimate);
+
+            int finalBid = Math.Min((int)(Valuation * bidModifier), Valuation);
+
+            return finalBid;
+        }
+        private double CalculateBidModifier(int averageBidEstimate)
+        {
+            if (Valuation > averageBidEstimate)
+            {
+                return 1.1;
+            }
+            else
+            {
+                return 0.9; 
+            }
+        }
+
+        private int GetAverageBidEstimate()
+        {
+            return 200; 
         }
 
         private void ProcessResult(string resultMessage)
