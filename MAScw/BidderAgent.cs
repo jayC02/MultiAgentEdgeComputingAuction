@@ -24,17 +24,17 @@ namespace EdgeComputingAuction
 
         public override void Act(Message message)
         {
-            Console.WriteLine($"{Name} received message: {message.Content}");
-
-            if (message.Content == "start")
+            if (message.Content == "start" || message.Content == "new round")
             {
+                // Reset win status and make a new bid for the new round
+                _hasWonBid = false;
                 MakeBid();
             }
             else if (message.Content.StartsWith("result"))
             {
                 ProcessResult(message.Content);
             }
-            // Add handling for offers here if necessary
+            // Additional handling for other messages if needed
         }
 
         private void MakeBid()
@@ -42,14 +42,14 @@ namespace EdgeComputingAuction
             if (!_hasWonBid)
             {
                 int bidAmount = CalculateBid();
-                Console.WriteLine($"{Name} is bidding {bidAmount} pence");
-                Send("Auctioneer", $"bid {bidAmount}");
+                Console.WriteLine($"{Name} is bidding {bidAmount} pence with data requirement {DataRequirement} Mb");
+                Send("Auctioneer", $"bid {bidAmount} {DataRequirement}");
             }
         }
 
+
         private int CalculateBid()
         {
-  
             int averageBidEstimate = GetAverageBidEstimate();
 
             double bidModifier = CalculateBidModifier(averageBidEstimate);
@@ -58,6 +58,7 @@ namespace EdgeComputingAuction
 
             return finalBid;
         }
+
         private double CalculateBidModifier(int averageBidEstimate)
         {
             if (Valuation > averageBidEstimate)
@@ -72,7 +73,7 @@ namespace EdgeComputingAuction
 
         private int GetAverageBidEstimate()
         {
-            return 200; 
+            return 200;
         }
 
         private void ProcessResult(string resultMessage)

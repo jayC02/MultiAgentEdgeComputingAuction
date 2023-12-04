@@ -19,6 +19,9 @@ namespace EdgeComputingAuction
         private int expectedNumberOfOffers;
         private int expectedNumberOfBids;
 
+        private HashSet<string> _unmatchedBidders;
+        private HashSet<string> _unmatchedSellers;
+
         public AuctioneerAgent()
         {
             _participants = new List<string>();
@@ -26,8 +29,8 @@ namespace EdgeComputingAuction
             _offers = new List<Offer>();
             _round = 0;
 
-            expectedNumberOfOffers = 10; 
-            expectedNumberOfBids = 15;   
+            expectedNumberOfOffers = 10;
+            expectedNumberOfBids = 15;
         }
 
         public override void Setup()
@@ -58,7 +61,7 @@ namespace EdgeComputingAuction
             {
                 HandleOffer(message.Sender, message.Content);
             }
-            if (!_offersCollected && _offers.Count >= expectedNumberOfOffers) 
+            if (!_offersCollected && _offers.Count >= expectedNumberOfOffers)
             {
                 _offersCollected = true;
             }
@@ -70,8 +73,8 @@ namespace EdgeComputingAuction
             if (_round > 0 && _offersCollected && (_bidsCollected || _bids.Count > 0))
             {
                 PerformAuction();
-                _offersCollected = false; // Reset for next round
-                _bidsCollected = false; // Reset for next round
+                _offersCollected = false;
+                _bidsCollected = false;
             }
         }
 
@@ -91,78 +94,124 @@ namespace EdgeComputingAuction
         private void HandleBid(string bidder, string bidMessage)
         {
             string[] bidParts = bidMessage.Split(' ');
+            if (bidParts.Length < 3)
+            {
+                Console.WriteLine($"Invalid bid message format: {bidMessage}");
+                return;
+            }
+
             int bidAmount = int.Parse(bidParts[1]);
+            int dataRequirement = int.Parse(bidParts[2]);
 
             _bids.Add(new Bid
             {
                 Bidder = bidder,
-                Amount = bidAmount
+                Amount = bidAmount,
+                DataRequirement = dataRequirement
             });
 
-            Console.WriteLine($"Received bid from {bidder} for {bidAmount}.");
+            //Console.WriteLine($"Received bid from {bidder} for {bidAmount} with data requirement {dataRequirement}.");
         }
 
         private void HandleOffer(string seller, string offerMessage)
         {
             string[] offerParts = offerMessage.Split(' ');
-            int offerAmount = int.Parse(offerParts[1]);
+            if (offerParts.Length < 3 ||
+                !int.TryParse(offerParts[1], out int offerAmount) ||
+                !int.TryParse(offerParts[2], out int capacity))
+            {
+                Console.WriteLine($"Invalid offer message format: {offerMessage}");
+                return; // Exit the method if the message format is not as expected
+            }
 
             _offers.Add(new Offer
             {
                 Seller = seller,
-                Amount = offerAmount
+                Amount = offerAmount,
+                Capacity = capacity
             });
 
-            Console.WriteLine($"Received offer from {seller} for {offerAmount} pence per MB");
+            Console.WriteLine($"Received offer from {seller} for {offerAmount} pence per MB with capacity {capacity}");
         }
+
 
         private void PerformAuction()
         {
             var sortedBids = _bids.OrderByDescending(b => b.Amount).ToList();
             var sortedOffers = _offers.OrderBy(o => o.Amount).ToList();
 
-            for (int bidIndex = 0; bidIndex < sortedBids.Count; bidIndex++)
+            int bidIndex = 0;
+            while (bidIndex < sortedBids.Count)
             {
                 var currentBid = sortedBids[bidIndex];
+                bool matchFound = false;
 
                 for (int offerIndex = 0; offerIndex < sortedOffers.Count; offerIndex++)
                 {
                     var currentOffer = sortedOffers[offerIndex];
 
-                    if (currentBid.Amount >= currentOffer.Amount)
+                    // Inside the PerformAuction method
+                    if (currentBid.Amount >= currentOffer.Amount && currentBid.DataRequirement <= currentOffer.Capacity)
                     {
                         // Match found
-                        Console.WriteLine($"Auction Match:{currentBid.Bidder} wins with bid {currentBid.Amount}. Seller: {currentOffer.Seller} with offer {currentOffer.Amount}");
+                        Console.WriteLine($"Auction Match: Bidder {currentBid.Bidder} wins with bid {currentBid.Amount}. Seller: {currentOffer.Seller} with offer {currentOffer.Amount}");
                         Send(currentBid.Bidder, $"win {currentBid.Amount}");
                         Send(currentOffer.Seller, $"sold {currentOffer.Amount} pence");
 
-                        // Remove matched bid and offer
                         sortedBids.RemoveAt(bidIndex);
                         sortedOffers.RemoveAt(offerIndex);
 
-                        // Adjust bidIndex to account for the removed bid
-                        bidIndex--;
-
-                        break; // Break out of the inner loop and continue with the next bid
+                        matchFound = true;
+                        break; // Break out of the inner loop
                     }
                 }
+                if (!matchFound)
+                {
+                    bidIndex++; // Increment bid index only if no match was found
+                }
             }
-            _offers.Clear();
-            _bids.Clear();
+            UpdateUnmatchedAgents();
             _round++;
+
             Console.WriteLine("Next auction round will start.----------------------------------------------------------");
+
+            Broadcast("new round");
+        }
+        private void UpdateUnmatchedAgents()
+        {
+            // Initialize the sets if null
+            _unmatchedBidders ??= new HashSet<string>();
+            _unmatchedSellers ??= new HashSet<string>();
+
+            _unmatchedBidders.Clear();
+            _unmatchedSellers.Clear();
+
+            // Add all bidders and sellers to the unmatched sets
+            foreach (var bid in _bids)
+            {
+                _unmatchedBidders.Add(bid.Bidder);
+            }
+            foreach (var offer in _offers)
+            {
+                _unmatchedSellers.Add(offer.Seller);
+            }
+            _bids.Clear();
+            _offers.Clear();
         }
 
         private struct Bid
         {
             public string Bidder { get; set; }
             public int Amount { get; set; }
+            public int DataRequirement { get; set; }
         }
 
         private struct Offer
         {
             public string Seller { get; set; }
             public int Amount { get; set; }
+            public int Capacity { get; set; }
         }
     }
+
 }

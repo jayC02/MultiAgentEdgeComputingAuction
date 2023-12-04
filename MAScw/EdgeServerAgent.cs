@@ -8,7 +8,6 @@ namespace EdgeComputingAuction
         public int Capacity { get; private set; }
         public int CostPerUnit { get; private set; }
 
-        // Additional properties for strategic decision-making
         private int LastSalePrice;
         private bool MadeSaleLastRound;
         private int RoundsWithoutSale;
@@ -25,15 +24,18 @@ namespace EdgeComputingAuction
         public override void Setup()
         {
             Console.WriteLine($"{Name} set up with capacity {Capacity} Mb at cost {CostPerUnit} pence per 10MB");
-            Send("Auctioneer", $"join {Capacity}");
+            Send("Auctioneer", $"join {Capacity}MB");
         }
 
         public override void Act(Message message)
         {
             Console.WriteLine($"{Name} received message: {message.Content}");
 
-            if (message.Content == "start")
+            if (message.Content == "start" || message.Content == "new round")
             {
+                //reset sale status
+                MadeSaleLastRound = false; 
+                //create a new offer for new round
                 MakeOffer();
             }
             else if (message.Content.StartsWith("result"))
@@ -44,29 +46,28 @@ namespace EdgeComputingAuction
 
         private void MakeOffer()
         {
-            int offerPrice = CalculateOfferPrice();
-            Console.WriteLine($"Edge Server {Name} is offering {Capacity} Mb at {offerPrice}p");
-            Send("Auctioneer", $"offer {Capacity} {offerPrice} pence");
+            double offerPrice = CalculateOfferPrice();
+            int offerPriceInt = (int)Math.Round(offerPrice);
+            Console.WriteLine($"Edge Server {Name} is offering {Capacity} Mb at {offerPriceInt}p");
+            Send("Auctioneer", $"offer {offerPriceInt} {Capacity}");
         }
 
-        private int CalculateOfferPrice()
+
+        private double CalculateOfferPrice()
         {
-            // Calculate the number of 10 MB units in the capacity
-            int numberOfUnits = (int)Math.Ceiling((double)Capacity / 10);
+            double costPerMB = CostPerUnit / 10.0;
 
-            // Calculate the base price as cost per 10 MB unit times the number of units
-            int basePrice = CostPerUnit * numberOfUnits;
+            double basePrice = costPerMB * Capacity;
 
-            // Adjusting the price dynamically based on the market and past performance
+            // Adjusting the price dynamically
             int marketAdjustment = DetermineMarketAdjustment();
             int performanceAdjustment = DeterminePerformanceAdjustment();
 
-            int finalOfferPrice = basePrice + marketAdjustment + performanceAdjustment;
-            finalOfferPrice = Math.Max(finalOfferPrice, basePrice);
+            double finalOfferPrice = basePrice + marketAdjustment + performanceAdjustment;
 
+            // Return the exact decimal value
             return finalOfferPrice;
         }
-
 
         private int DetermineMarketAdjustment()
         {

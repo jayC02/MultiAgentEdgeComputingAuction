@@ -7,7 +7,7 @@ namespace EdgeComputingAuction
     {
         static void Main(string[] args)
         {
-            var environment = new EnvironmentMas(randomOrder: false, parallel: false);
+            var environment = new EnvironmentMas(randomOrder:true, parallel:true);
 
             // Initialize the auctioneer agent
             var auctioneer = new AuctioneerAgent();
