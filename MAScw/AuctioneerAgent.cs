@@ -41,7 +41,8 @@ namespace EdgeComputingAuction
 
         public override void Act(Message message)
         {
-            Console.WriteLine($"{message.Content} ----> Auctioneer");
+
+            // Console.WriteLine($"{message.Content} ----> Auctioneer");
 
             if (message.Content.StartsWith("join"))
             {
@@ -131,7 +132,7 @@ namespace EdgeComputingAuction
                 Capacity = capacity
             });
 
-            Console.WriteLine($"Received offer from {seller} for {offerAmount} pence per MB with capacity {capacity}");
+            Console.WriteLine($"Received offer from {seller} for {offerAmount} pence for {capacity}MB");
         }
 
 
@@ -139,6 +140,24 @@ namespace EdgeComputingAuction
         {
             var sortedBids = _bids.OrderByDescending(b => b.Amount).ToList();
             var sortedOffers = _offers.OrderBy(o => o.Amount).ToList();
+
+            // Initialize the sets if null
+            _unmatchedBidders ??= new HashSet<string>();
+            _unmatchedSellers ??= new HashSet<string>();
+
+            // Clear previous round's unmatched agents
+            _unmatchedBidders.Clear();
+            _unmatchedSellers.Clear();
+
+            // Initially, consider all agents unmatched
+            foreach (var bid in _bids)
+            {
+                _unmatchedBidders.Add(bid.Bidder);
+            }
+            foreach (var offer in _offers)
+            {
+                _unmatchedSellers.Add(offer.Seller);
+            }
 
             int bidIndex = 0;
             while (bidIndex < sortedBids.Count)
@@ -150,54 +169,56 @@ namespace EdgeComputingAuction
                 {
                     var currentOffer = sortedOffers[offerIndex];
 
-                    // Inside the PerformAuction method
                     if (currentBid.Amount >= currentOffer.Amount && currentBid.DataRequirement <= currentOffer.Capacity)
                     {
-                        // Match found
                         Console.WriteLine($"Auction Match: Bidder {currentBid.Bidder} wins with bid {currentBid.Amount}. Seller: {currentOffer.Seller} with offer {currentOffer.Amount}");
                         Send(currentBid.Bidder, $"win {currentBid.Amount}");
                         Send(currentOffer.Seller, $"sold {currentOffer.Amount} pence");
+
+                        // After determining the winners, send loss messages to the remaining bidders
+                        foreach (var bid in _bids)
+                        {
+                            if (_unmatchedBidders.Contains(bid.Bidder))
+                            {
+                                // This bidder did not win, send a loss message
+                                Send(bid.Bidder, $"loss");
+                            }
+                        }
+                        // Remove matched agents from unmatched sets
+                        _unmatchedBidders.Remove(currentBid.Bidder);
+                        _unmatchedSellers.Remove(currentOffer.Seller);
 
                         sortedBids.RemoveAt(bidIndex);
                         sortedOffers.RemoveAt(offerIndex);
 
                         matchFound = true;
-                        break; // Break out of the inner loop
+                        break;
                     }
                 }
                 if (!matchFound)
                 {
-                    bidIndex++; // Increment bid index only if no match was found
+                    bidIndex++;
                 }
             }
-            UpdateUnmatchedAgents();
-            _round++;
 
+            _round++;
             Console.WriteLine("Next auction round will start.----------------------------------------------------------");
 
-            Broadcast("new round");
-        }
-        private void UpdateUnmatchedAgents()
-        {
-            // Initialize the sets if null
-            _unmatchedBidders ??= new HashSet<string>();
-            _unmatchedSellers ??= new HashSet<string>();
-
-            _unmatchedBidders.Clear();
-            _unmatchedSellers.Clear();
-
-            // Add all bidders and sellers to the unmatched sets
-            foreach (var bid in _bids)
+            // Broadcast new round message only to unmatched agents
+            foreach (var bidder in _unmatchedBidders)
             {
-                _unmatchedBidders.Add(bid.Bidder);
+                Send(bidder, "new round");
             }
-            foreach (var offer in _offers)
+            foreach (var seller in _unmatchedSellers)
             {
-                _unmatchedSellers.Add(offer.Seller);
+                Send(seller, "new round");
             }
+
+            // Clear bids and offers for the next round
             _bids.Clear();
             _offers.Clear();
         }
+
 
         private struct Bid
         {

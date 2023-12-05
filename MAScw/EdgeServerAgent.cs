@@ -7,6 +7,7 @@ namespace EdgeComputingAuction
     {
         public int Capacity { get; private set; }
         public int CostPerUnit { get; private set; }
+  
 
         private int LastSalePrice;
         private bool MadeSaleLastRound;
@@ -33,9 +34,7 @@ namespace EdgeComputingAuction
 
             if (message.Content == "start" || message.Content == "new round")
             {
-                //reset sale status
-                MadeSaleLastRound = false; 
-                //create a new offer for new round
+                MadeSaleLastRound = false;
                 MakeOffer();
             }
             else if (message.Content.StartsWith("result"))
@@ -46,49 +45,45 @@ namespace EdgeComputingAuction
 
         private void MakeOffer()
         {
-            double offerPrice = CalculateOfferPrice();
+            double offerPrice = CalculateDynamicOfferPrice();
             int offerPriceInt = (int)Math.Round(offerPrice);
             Console.WriteLine($"Edge Server {Name} is offering {Capacity} Mb at {offerPriceInt}p");
             Send("Auctioneer", $"offer {offerPriceInt} {Capacity}");
         }
 
-
-        private double CalculateOfferPrice()
+        private double CalculateDynamicOfferPrice()
         {
-            double costPerMB = CostPerUnit / 10.0;
+            double basePrice = CalculateBasePrice();
+            double marketAdjustment = DetermineMarketAdjustment();
+            double performanceAdjustment = DeterminePerformanceAdjustment();
 
-            double basePrice = costPerMB * Capacity;
-
-            // Adjusting the price dynamically
-            int marketAdjustment = DetermineMarketAdjustment();
-            int performanceAdjustment = DeterminePerformanceAdjustment();
-
-            double finalOfferPrice = basePrice + marketAdjustment + performanceAdjustment;
-
-            // Return the exact decimal value
-            return finalOfferPrice;
+            return basePrice + marketAdjustment + performanceAdjustment;
         }
 
-        private int DetermineMarketAdjustment()
+        private double CalculateBasePrice()
         {
-            // Logic to determine market adjustment
-            // This could involve analyzing overall demand and supply dynamics
+            double costPerMB = CostPerUnit / 10.0;
+            return costPerMB * Capacity;
+        }
+
+        private double DetermineMarketAdjustment()
+        {
+            // Implement your logic for market adjustment here
             return 0; // Placeholder
         }
 
-        private int DeterminePerformanceAdjustment()
+        private double DeterminePerformanceAdjustment()
         {
-            // Adjust price based on previous round's performance
             if (MadeSaleLastRound)
             {
-                // If sale was made, consider slight increment or stay stable
-                return 5; // Example value
+                RoundsWithoutSale = 0; // Reset rounds without sale
+                return 5; // Example value for increment
             }
             else
             {
-                // If no sale was made, consider decrementing the price
                 RoundsWithoutSale++;
-                return -RoundsWithoutSale * 5; // Decrement more with each round without a sale
+                // Significantly reduce price after each round without a sale
+                return -100 * RoundsWithoutSale; // Aggressive decrement
             }
         }
 
@@ -100,7 +95,6 @@ namespace EdgeComputingAuction
             {
                 LastSalePrice = int.Parse(resultInfo[2]);
                 MadeSaleLastRound = true;
-                RoundsWithoutSale = 0;
                 Console.WriteLine($"Edge Server {Name} sold capacity at price {LastSalePrice}");
             }
             else

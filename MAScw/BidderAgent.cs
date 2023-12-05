@@ -8,12 +8,14 @@ namespace EdgeComputingAuction
         public int DataRequirement { get; private set; }
         public int Valuation { get; private set; }
         private bool _hasWonBid;
+        private int _roundsWithoutWin;
 
         public BidderAgent(int dataRequirement, int valuation)
         {
             DataRequirement = dataRequirement;
             Valuation = valuation;
             _hasWonBid = false;
+            _roundsWithoutWin = 0;
         }
 
         public override void Setup()
@@ -24,56 +26,44 @@ namespace EdgeComputingAuction
 
         public override void Act(Message message)
         {
+            Console.WriteLine($"{Name} received message: {message.Content}");
+
             if (message.Content == "start" || message.Content == "new round")
             {
-                // Reset win status and make a new bid for the new round
-                _hasWonBid = false;
                 MakeBid();
             }
             else if (message.Content.StartsWith("result"))
             {
                 ProcessResult(message.Content);
             }
-            // Additional handling for other messages if needed
+            else if (message.Content == "loss")
+            {
+                // Handle the loss message
+                _hasWonBid = false;
+                _roundsWithoutWin++;
+                //Console.WriteLine($"{Name} did not win. Adjusting strategy for next round.");
+            }
         }
 
         private void MakeBid()
         {
-            if (!_hasWonBid)
-            {
-                int bidAmount = CalculateBid();
-                Console.WriteLine($"{Name} is bidding {bidAmount} pence with data requirement {DataRequirement} Mb");
-                Send("Auctioneer", $"bid {bidAmount} {DataRequirement}");
-            }
+            int bidAmount = CalculateDynamicBid();
+            Console.WriteLine($"{Name} is bidding {bidAmount} pence with data requirement {DataRequirement} Mb");
+            Send("Auctioneer", $"bid {bidAmount} {DataRequirement}");
         }
 
-
-        private int CalculateBid()
+        private int CalculateDynamicBid()
         {
-            int averageBidEstimate = GetAverageBidEstimate();
+            // Starting bid is set to 50% of the valuation
+            double bidPercentage = 0.65;
 
-            double bidModifier = CalculateBidModifier(averageBidEstimate);
+            // Increase the bid by 15% for each new round
+            bidPercentage += 0.15 * _roundsWithoutWin;
 
-            int finalBid = Math.Min((int)(Valuation * bidModifier), Valuation);
+            // Calculate the new bid
+            int newBid = (int)(Valuation * bidPercentage);
 
-            return finalBid;
-        }
-
-        private double CalculateBidModifier(int averageBidEstimate)
-        {
-            if (Valuation > averageBidEstimate)
-            {
-                return 1.1;
-            }
-            else
-            {
-                return 0.9; 
-            }
-        }
-
-        private int GetAverageBidEstimate()
-        {
-            return 200;
+            return newBid;
         }
 
         private void ProcessResult(string resultMessage)
@@ -84,14 +74,15 @@ namespace EdgeComputingAuction
             {
                 Console.WriteLine($"{Name} won the bid at price {resultInfo[2]}");
                 _hasWonBid = true;
-                // Further processing if required, like adjusting strategies or confirming resource allocation.
+                _roundsWithoutWin = 0; // Reset counter
             }
             else
             {
                 Console.WriteLine($"{Name} did not win. Adjusting strategy for next round.");
-                // Adjust strategy for the next round if needed.
-                _hasWonBid = false; // Reset win status for next round
+                _hasWonBid = false;
+                _roundsWithoutWin++; // Increment the counter
             }
         }
     }
+
 }
