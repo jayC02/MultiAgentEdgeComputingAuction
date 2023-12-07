@@ -7,11 +7,12 @@ namespace EdgeComputingAuction
     {
         public int Capacity { get; private set; }
         public int CostPerUnit { get; private set; }
-  
 
         private int LastSalePrice;
         private bool MadeSaleLastRound;
         private int RoundsWithoutSale;
+        private const int PriceDecreaseFactor = 100;
+        private const int MinimumPricePerMB = 1; // Minimum price per MB to avoid negative pricing
 
         public EdgeServerAgent(int capacity, int costPerUnit)
         {
@@ -54,10 +55,10 @@ namespace EdgeComputingAuction
         private double CalculateDynamicOfferPrice()
         {
             double basePrice = CalculateBasePrice();
-            double marketAdjustment = DetermineMarketAdjustment();
             double performanceAdjustment = DeterminePerformanceAdjustment();
 
-            return basePrice + marketAdjustment + performanceAdjustment;
+            double dynamicPrice = basePrice + performanceAdjustment;
+            return Math.Max(dynamicPrice, MinimumPricePerMB * Capacity);
         }
 
         private double CalculateBasePrice()
@@ -66,24 +67,17 @@ namespace EdgeComputingAuction
             return costPerMB * Capacity;
         }
 
-        private double DetermineMarketAdjustment()
-        {
-            // Implement your logic for market adjustment here
-            return 0; // Placeholder
-        }
-
         private double DeterminePerformanceAdjustment()
         {
             if (MadeSaleLastRound)
             {
-                RoundsWithoutSale = 0; // Reset rounds without sale
-                return 5; // Example value for increment
+                RoundsWithoutSale = 0;
+                return 0;
             }
             else
             {
                 RoundsWithoutSale++;
-                // Significantly reduce price after each round without a sale
-                return -100 * RoundsWithoutSale; // Aggressive decrement
+                return -PriceDecreaseFactor * RoundsWithoutSale;
             }
         }
 

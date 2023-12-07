@@ -26,7 +26,7 @@ namespace EdgeComputingAuction
 
         public override void Act(Message message)
         {
-            Console.WriteLine($"{Name} received message: {message.Content}");
+            //Console.WriteLine($"{Name} received message: {message.Content}");
 
             if (message.Content == "start" || message.Content == "new round")
             {
@@ -54,13 +54,10 @@ namespace EdgeComputingAuction
 
         private int CalculateDynamicBid()
         {
-            // Starting bid is set to 50% of the valuation
             double bidPercentage = 0.65;
 
-            // Increase the bid by 15% for each new round
-            bidPercentage += 0.15 * _roundsWithoutWin;
+            bidPercentage += 0.25 * _roundsWithoutWin;
 
-            // Calculate the new bid
             int newBid = (int)(Valuation * bidPercentage);
 
             return newBid;
