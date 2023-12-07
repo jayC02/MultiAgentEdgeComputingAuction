@@ -12,21 +12,24 @@ namespace EdgeComputingAuction
         private bool MadeSaleLastRound;
         private int RoundsWithoutSale;
         private const int PriceDecreaseFactor = 100;
-        private const int MinimumPricePerMB = 1; // Minimum price per MB to avoid negative pricing
+        private const int MinimumPricePerMB = 1;
+        public int Distance { get; private set; }
 
-        public EdgeServerAgent(int capacity, int costPerUnit)
+
+        public EdgeServerAgent(int capacity, int costPerUnit, int distance)
         {
             Capacity = capacity;
             CostPerUnit = costPerUnit;
             LastSalePrice = 0;
             MadeSaleLastRound = false;
+            Distance = distance;
             RoundsWithoutSale = 0;
         }
 
         public override void Setup()
         {
-            Console.WriteLine($"{Name} set up with capacity {Capacity} Mb at cost {CostPerUnit} pence per 10MB");
-            Send("Auctioneer", $"join {Capacity}MB");
+            Console.WriteLine($"{Name} set up with capacity {Capacity} Mb at cost {CostPerUnit} pence per 10MB and distance {Distance} miles");
+            Send("Auctioneer", $"join {Capacity}MB {Distance}");
         }
 
         public override void Act(Message message)
@@ -48,8 +51,8 @@ namespace EdgeComputingAuction
         {
             double offerPrice = CalculateDynamicOfferPrice();
             int offerPriceInt = (int)Math.Round(offerPrice);
-            Console.WriteLine($"Edge Server {Name} is offering {Capacity} Mb at {offerPriceInt}p");
-            Send("Auctioneer", $"offer {offerPriceInt} {Capacity}");
+            Console.WriteLine($"Edge Server {Name} is offering {Capacity} Mb at {offerPriceInt}p with distance {Distance} miles");
+            Send("Auctioneer", $"offer {offerPriceInt} {Capacity} {Distance}");
         }
 
         private double CalculateDynamicOfferPrice()

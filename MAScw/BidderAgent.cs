@@ -8,20 +8,23 @@ namespace EdgeComputingAuction
         public int DataRequirement { get; private set; }
         public int Valuation { get; private set; }
         private bool _hasWonBid;
+        public int Distance { get; private set; }
+
         private int _roundsWithoutWin;
 
-        public BidderAgent(int dataRequirement, int valuation)
+        public BidderAgent(int dataRequirement, int valuation, int distance)
         {
             DataRequirement = dataRequirement;
             Valuation = valuation;
             _hasWonBid = false;
+            Distance = distance;
             _roundsWithoutWin = 0;
         }
 
         public override void Setup()
         {
-            Console.WriteLine($"{Name} set up with data requirement {DataRequirement} Mb and valuation {Valuation}p");
-            Send("Auctioneer", $"{Name} join {DataRequirement}MB");
+            Console.WriteLine($"{Name} set up with data requirement {DataRequirement} Mb , valuation {Valuation}p and distance {Distance} miles");
+            Send("Auctioneer", $"{Name} join {DataRequirement}MB {Distance} miles");
         }
 
         public override void Act(Message message)
@@ -38,18 +41,16 @@ namespace EdgeComputingAuction
             }
             else if (message.Content == "loss")
             {
-                // Handle the loss message
                 _hasWonBid = false;
                 _roundsWithoutWin++;
-                //Console.WriteLine($"{Name} did not win. Adjusting strategy for next round.");
             }
         }
 
         private void MakeBid()
         {
             int bidAmount = CalculateDynamicBid();
-            Console.WriteLine($"{Name} is bidding {bidAmount} pence with data requirement {DataRequirement} Mb");
-            Send("Auctioneer", $"bid {bidAmount} {DataRequirement}");
+            Console.WriteLine($"{Name} is bidding {bidAmount} pence with data requirement {DataRequirement} Mb with distance {Distance} miles");
+            Send("Auctioneer", $"bid {bidAmount} {DataRequirement} {Distance}");
         }
 
         private int CalculateDynamicBid()

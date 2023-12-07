@@ -66,7 +66,6 @@ namespace EdgeComputingAuction
             {
                 _offersCollected = true;
             }
-            // Check if all bids have been received
             if (!_bidsCollected && _bids.Count >= expectedNumberOfBids)
             {
                 _bidsCollected = true;
@@ -95,7 +94,7 @@ namespace EdgeComputingAuction
         private void HandleBid(string bidder, string bidMessage)
         {
             string[] bidParts = bidMessage.Split(' ');
-            if (bidParts.Length < 3)
+            if (bidParts.Length < 4) 
             {
                 Console.WriteLine($"Invalid bid message format: {bidMessage}");
                 return;
@@ -103,12 +102,14 @@ namespace EdgeComputingAuction
 
             int bidAmount = int.Parse(bidParts[1]);
             int dataRequirement = int.Parse(bidParts[2]);
+            int distance = int.Parse(bidParts[3]); 
 
             _bids.Add(new Bid
             {
                 Bidder = bidder,
                 Amount = bidAmount,
-                DataRequirement = dataRequirement
+                DataRequirement = dataRequirement,
+                Distance = distance
             });
 
             //Console.WriteLine($"Received bid from {bidder} for {bidAmount} with data requirement {dataRequirement}.");
@@ -117,24 +118,26 @@ namespace EdgeComputingAuction
         private void HandleOffer(string seller, string offerMessage)
         {
             string[] offerParts = offerMessage.Split(' ');
-            if (offerParts.Length < 3 ||
-                !int.TryParse(offerParts[1], out int offerAmount) ||
-                !int.TryParse(offerParts[2], out int capacity))
+            if (offerParts.Length < 4)
             {
                 Console.WriteLine($"Invalid offer message format: {offerMessage}");
-                return; // Exit the method if the message format is not as expected
+                return;
             }
+
+            int offerAmount = int.Parse(offerParts[1]);
+            int capacity = int.Parse(offerParts[2]);
+            int distance = int.Parse(offerParts[3]); 
 
             _offers.Add(new Offer
             {
                 Seller = seller,
                 Amount = offerAmount,
-                Capacity = capacity
+                Capacity = capacity,
+                Distance = distance 
             });
 
-            Console.WriteLine($"Received offer from {seller} for {offerAmount} pence for {capacity}MB");
+            Console.WriteLine($"Received offer from {seller} for {offerAmount} pence for {capacity}MB at distance {distance} miles");
         }
-
 
         private void PerformAuction()
         {
@@ -159,24 +162,24 @@ namespace EdgeComputingAuction
             foreach (var bid in sortedBids)
             {
                 Offer? bestMatch = null;
-                int bestMatchDifference = int.MaxValue;
+                int bestDistanceDifference = int.MaxValue;
 
                 foreach (var offer in sortedOffers)
                 {
                     if (bid.Amount >= offer.Amount && bid.DataRequirement <= offer.Capacity)
                     {
-                        int difference = Math.Abs(bid.Amount - offer.Amount);
-                        if (difference < bestMatchDifference)
+                        int distanceDifference = Math.Abs(bid.Distance - offer.Distance);
+                        if (distanceDifference < bestDistanceDifference)
                         {
                             bestMatch = offer;
-                            bestMatchDifference = difference;
+                            bestDistanceDifference = distanceDifference;
                         }
                     }
                 }
 
                 if (bestMatch != null)
                 {
-                    Console.WriteLine($"Auction Match: Bidder {bid.Bidder} wins with bid {bid.Amount}. Seller: {bestMatch.Value.Seller} with offer {bestMatch.Value.Amount}");
+                    Console.WriteLine($"Auction Match: Bidder {bid.Bidder} wins with bid {bid.Amount} at distance {bestMatch.Value.Distance} miles. Seller: {bestMatch.Value.Seller} with offer {bestMatch.Value.Amount} at distance {bestMatch.Value.Distance} miles.");
                     Send(bid.Bidder, $"win {bid.Amount}");
                     Send(bestMatch.Value.Seller, $"sold {bestMatch.Value.Amount}");
 
@@ -213,6 +216,8 @@ namespace EdgeComputingAuction
             public string Bidder { get; set; }
             public int Amount { get; set; }
             public int DataRequirement { get; set; }
+            public int Distance { get; set; }
+
         }
 
         private struct Offer
@@ -220,6 +225,8 @@ namespace EdgeComputingAuction
             public string Seller { get; set; }
             public int Amount { get; set; }
             public int Capacity { get; set; }
+            public int Distance { get; set; } 
+
         }
     }
 
