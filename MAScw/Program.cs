@@ -14,7 +14,7 @@ namespace EdgeComputingAuction
             environment.Add(auctioneer, "Auctioneer");
 
             // Initialize bidder agents (device agents)
-            for (int i = 1; i <= 25; i++)
+            for (int i = 1; i <= 50; i++)
             {
                 int dataRequirement = new Random().Next(10, 50);
                 int valuation = new Random().Next(150, 1000);
@@ -25,7 +25,7 @@ namespace EdgeComputingAuction
             }
 
             // Initialize edge server agents (seller agents)
-            for (int i = 1; i <= 25; i++)
+            for (int i = 1; i <= 50; i++)
             {
                 int capacity = new Random().Next(20, 100); 
                 int costPerUnit = new Random().Next(50, 250);
